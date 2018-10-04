@@ -1,40 +1,34 @@
-var camera, cameraTarget, scene, renderer;
-
+var camera, cameraTarget, scene, renderer, controls, orbit, control;
+var w = window.innerWidth, h = window.innerHeight;
 window.addEventListener("load", function () {
     "use strict";
     
     var view = document.getElementById("view");
     
-	var w = view.offsetWidth, h = window.innerHeight;
 	
-	var renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize( w, window.innerHeight );
+	
+	renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize( w, h );
 	renderer.gammaInput = true;
-				renderer.gammaOutput = true;
-				renderer.shadowMap.enabled = true;
+	renderer.gammaOutput = true;
+	renderer.shadowMap.enabled = true;
 	view.appendChild(renderer.domElement);
-    
-    var camera = new THREE.PerspectiveCamera(70, w / h, 0.1, 1000);
-    camera.position.set( 3, 3, 3 );
-	cameraTarget = new THREE.Vector3( 0, -0.25, 0 );
-    var controls = new THREE.OrbitControls( camera );
-	controls.enableDamping = true
-	controls.dampingFactor = 0.2
-	controls.rotateSpeed = 0.5
-    
+    window.addEventListener( 'resize', onWindowResize, false );
+    setupCamera();
+	
     scene = new THREE.Scene();
     scene.add(new THREE.AmbientLight(0x666666));
 	scene.background = new THREE.Color( 0x72645b );
 				scene.fog = new THREE.Fog( 0x72645b, 2, 15 );
     
 	var plane = new THREE.Mesh(
-					new THREE.PlaneBufferGeometry( 40, 40 ),
-					new THREE.MeshPhongMaterial( { color: 0x999999, specular: 0x101010 } )
-				);
-				plane.rotation.x = -Math.PI/2;
-				//plane.position.y = -0.5;
-				scene.add( plane );
-				plane.receiveShadow = true;
+		new THREE.PlaneBufferGeometry( 40, 40 ),
+		new THREE.MeshPhongMaterial( { color: 0x999999, specular: 0x101010 } )
+	);
+	plane.rotation.x = -Math.PI/2;
+	//plane.position.y = -0.5;
+	scene.add( plane );
+	plane.receiveShadow = true;
 				
 	var size = 10;
 	var divisions = 10;
@@ -43,8 +37,8 @@ window.addEventListener("load", function () {
 	scene.add( gridHelper );
 	
 	scene.add( new THREE.HemisphereLight( 0x443333, 0x111122 ) );
-				addShadowedLight( 1, 1, 1, 0xffffff, 1.35 );
-				addShadowedLight( 0.5, 1, -1, 0xffaa00, 1 );
+		addShadowedLight( 1, 1, 1, 0xffffff, 1.35 );
+		addShadowedLight( 0.5, 1, -1, 0xffaa00, 1 );
 	
     var light1 = new THREE.DirectionalLight(0xffffff);
     light1.position.set(0, 100, 100);
@@ -65,7 +59,7 @@ window.addEventListener("load", function () {
     var loop = function loop() {
         requestAnimationFrame(loop);
         //obj.rotation.z += 0.05;
-        controls.update();
+        //controls.update();
         renderer.clear();
         renderer.render(scene, camera);
     };
@@ -84,7 +78,21 @@ window.addEventListener("load", function () {
 			obj.scale.set( 2, 2, 2 );
 			obj.castShadow = true;
 			obj.receiveShadow = true;
-            scene.add(obj);
+            
+			orbit = new THREE.OrbitControls(camera, renderer.domElement);
+			orbit.update();
+			orbit.addEventListener( 'change', render );
+
+			control = new THREE.TransformControls( camera, renderer.domElement );
+			control.addEventListener( 'change', render );
+
+			control.addEventListener( 'dragging-changed', function ( event ) {
+				orbit.enabled = !event.value;
+			} );
+
+			scene.add(obj);
+			control.attach( obj );
+			scene.add( control );
         }, false);
         reader.readAsArrayBuffer(file);
     };
@@ -108,7 +116,92 @@ window.addEventListener("load", function () {
         var file = ev.dataTransfer.files[0];
         openFile(file);
     }, false);
+	
+	window.addEventListener( 'keydown', function ( event ) {
+
+		switch ( event.keyCode ) {
+
+			case 81: // Q
+				control.setSpace( control.space === "local" ? "world" : "local" );
+				break;
+
+			case 17: // Ctrl
+				control.setTranslationSnap( 100 );
+				control.setRotationSnap( THREE.Math.degToRad( 15 ) );
+				break;
+
+			case 87: // W
+				control.setMode( "translate" );
+				break;
+
+			case 69: // E
+				control.setMode( "rotate" );
+				break;
+
+			case 82: // R
+				control.setMode( "scale" );
+				break;
+
+			case 187:
+			case 107: // +, =, num+
+				control.setSize( control.size + 0.1 );
+				break;
+
+			case 189:
+			case 109: // -, _, num-
+				control.setSize( Math.max( control.size - 0.1, 0.1 ) );
+				break;
+
+			case 88: // X
+				control.showX = !control.showX;
+				break;
+
+			case 89: // Y
+				control.showY = !control.showY;
+				break;
+
+			case 90: // Z
+				control.showZ = !control.showZ;
+				break;
+
+			case 32: // Spacebar
+				control.enabled = !control.enabled;
+				break;
+
+		}
+
+	});
+
+	window.addEventListener( 'keyup', function ( event ) {
+
+		switch ( event.keyCode ) {
+
+			case 17: // Ctrl
+				control.setTranslationSnap( null );
+				control.setRotationSnap( null );
+				break;
+
+		}
+
+	});
 }, false);
+
+function render() {
+
+	renderer.render( scene, camera );
+
+}
+
+function setupCamera() {
+	camera = new THREE.PerspectiveCamera(70, w / h, 0.1, 1000);
+    camera.position.set( 3, 3, 3 );
+	cameraTarget = new THREE.Vector3( 0, -0.25, 0 );
+    //controls = new THREE.OrbitControls( camera );
+	//controls.enableDamping = true
+	//controls.dampingFactor = 0.2
+	//controls.rotateSpeed = 0.5
+	
+}
 
 function addShadowedLight( x, y, z, color, intensity ) {
 	var directionalLight = new THREE.DirectionalLight( color, intensity );
@@ -128,38 +221,49 @@ function addShadowedLight( x, y, z, color, intensity ) {
 }
 
 function buildGui() {
-				gui = new dat.GUI();
-				var params = {
-					'light color': spotLight.color.getHex(),
-					intensity: spotLight.intensity,
-					distance: spotLight.distance,
-					angle: spotLight.angle,
-					penumbra: spotLight.penumbra,
-					decay: spotLight.decay
-				}
-				gui.addColor( params, 'light color' ).onChange( function ( val ) {
-					spotLight.color.setHex( val );
-					render();
-				} );
-				gui.add( params, 'intensity', 0, 2 ).onChange( function ( val ) {
-					spotLight.intensity = val;
-					render();
-				} );
-				gui.add( params, 'distance', 50, 200 ).onChange( function ( val ) {
-					spotLight.distance = val;
-					render();
-				} );
-				gui.add( params, 'angle', 0, Math.PI / 3 ).onChange( function ( val ) {
-					spotLight.angle = val;
-					render();
-				} );
-				gui.add( params, 'penumbra', 0, 1 ).onChange( function ( val ) {
-					spotLight.penumbra = val;
-					render();
-				} );
-				gui.add( params, 'decay', 1, 2 ).onChange( function ( val ) {
-					spotLight.decay = val;
-					render();
-				} );
-				gui.open();
-			}
+	gui = new dat.GUI();
+	var params = {
+		'light color': spotLight.color.getHex(),
+		intensity: spotLight.intensity,
+		distance: spotLight.distance,
+		angle: spotLight.angle,
+		penumbra: spotLight.penumbra,
+		decay: spotLight.decay
+	}
+	gui.addColor( params, 'light color' ).onChange( function ( val ) {
+		spotLight.color.setHex( val );
+		render();
+	} );
+	gui.add( params, 'intensity', 0, 2 ).onChange( function ( val ) {
+		spotLight.intensity = val;
+		render();
+	} );
+	gui.add( params, 'distance', 50, 200 ).onChange( function ( val ) {
+		spotLight.distance = val;
+		render();
+	} );
+	gui.add( params, 'angle', 0, Math.PI / 3 ).onChange( function ( val ) {
+		spotLight.angle = val;
+		render();
+	} );
+	gui.add( params, 'penumbra', 0, 1 ).onChange( function ( val ) {
+		spotLight.penumbra = val;
+		render();
+	} );
+	gui.add( params, 'decay', 1, 2 ).onChange( function ( val ) {
+		spotLight.decay = val;
+		render();
+	} );
+	gui.open();
+}
+
+function onWindowResize() {
+
+	camera.aspect = window.innerWidth / window.innerHeight;
+	camera.updateProjectionMatrix();
+
+	renderer.setSize( window.innerWidth, window.innerHeight );
+
+	render();
+
+}
