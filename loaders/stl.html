@@ -7,7 +7,7 @@
     <script src="OrbitControls.js"></script>
     <script src="TrackballControls.js"></script>
     <script src="STLLoader.js"></script>
-    <script src="dat.gui.js"></script>
+    <script src="dat.gui.min.js"></script>
     <script src="stl.js"></script>
 	<script src="TransformControls.js"></script>
     <script src="loader.js"></script>
@@ -34,8 +34,13 @@ canvas{
 }
 #info {
     position: absolute;
-    top: 0px; width: 80%;
+	background: white;
+    top: 0px; 
+	width: 40%;
+	max-width: 600px;
     right:0;
+	left: 0;
+	margin: 0 auto;
     padding: 15px;
     z-index:100;
 }

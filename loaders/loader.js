@@ -1,5 +1,6 @@
-var camera, cameraTarget, scene, renderer, controls, orbit, control;
+var camera, cameraTarget, scene, renderer, controls, orbit, control, obj, geom, mat;
 var w = window.innerWidth, h = window.innerHeight;
+
 window.addEventListener("load", function () {
     "use strict";
     
@@ -18,12 +19,12 @@ window.addEventListener("load", function () {
 	
     scene = new THREE.Scene();
     scene.add(new THREE.AmbientLight(0x666666));
-	scene.background = new THREE.Color( 0x72645b );
-				scene.fog = new THREE.Fog( 0x72645b, 2, 15 );
+	scene.background = new THREE.Color( 0x999999 );
+	scene.fog = new THREE.Fog( 0x72645b, 2, 15 );
     
 	var plane = new THREE.Mesh(
-		new THREE.PlaneBufferGeometry( 40, 40 ),
-		new THREE.MeshPhongMaterial( { color: 0x999999, specular: 0x101010 } )
+		//new THREE.PlaneBufferGeometry( 40, 40 ),
+		//new THREE.MeshPhongMaterial( { color: 0x999999, specular: 0x101010 } )
 	);
 	plane.rotation.x = -Math.PI/2;
 	//plane.position.y = -0.5;
@@ -35,8 +36,8 @@ window.addEventListener("load", function () {
 
 	var gridHelper = new THREE.GridHelper( size, divisions );
 	scene.add( gridHelper );
-	
 	scene.add( new THREE.HemisphereLight( 0x443333, 0x111122 ) );
+	
 		addShadowedLight( 1, 1, 1, 0xffffff, 1.35 );
 		addShadowedLight( 0.5, 1, -1, 0xffaa00, 1 );
 	
@@ -48,14 +49,12 @@ window.addEventListener("load", function () {
     light2.position.set(0, -100, -100);
     scene.add(light2);
     
-    var mat = new THREE.MeshPhongMaterial({
+    mat = new THREE.MeshPhongMaterial({
         color: 0x339900, ambient: 0x339900, specular: 0x030303,
     });
-    var obj = new THREE.Mesh(new THREE.Geometry(), mat);
+    obj = new THREE.Mesh(new THREE.Geometry(), mat);
     scene.add(obj);
     
-	//buildGui();
-	
     var loop = function loop() {
         requestAnimationFrame(loop);
         //obj.rotation.z += 0.05;
@@ -70,7 +69,7 @@ window.addEventListener("load", function () {
         var reader = new FileReader();
         reader.addEventListener("load", function (ev) {
             var buffer = ev.target.result;
-            var geom = loadStl(buffer);
+            geom = loadStl(buffer);
             scene.remove(obj);
             obj = new THREE.Mesh(geom, mat);
 			obj.position.set( 0, 0.5, 0 );
@@ -78,6 +77,7 @@ window.addEventListener("load", function () {
 			obj.scale.set( 2, 2, 2 );
 			obj.castShadow = true;
 			obj.receiveShadow = true;
+			obj.dynamic = true;
             
 			orbit = new THREE.OrbitControls(camera, renderer.domElement);
 			orbit.update();
@@ -93,10 +93,13 @@ window.addEventListener("load", function () {
 			scene.add(obj);
 			control.attach( obj );
 			scene.add( control );
+			buildGui();
         }, false);
         reader.readAsArrayBuffer(file);
     };
-    
+	
+	
+
     // file input button
     var input = document.getElementById("file");
     input.addEventListener("change", function (ev) {
@@ -221,39 +224,18 @@ function addShadowedLight( x, y, z, color, intensity ) {
 }
 
 function buildGui() {
-	gui = new dat.GUI();
 	var params = {
-		'light color': spotLight.color.getHex(),
-		intensity: spotLight.intensity,
-		distance: spotLight.distance,
-		angle: spotLight.angle,
-		penumbra: spotLight.penumbra,
-		decay: spotLight.decay
-	}
-	gui.addColor( params, 'light color' ).onChange( function ( val ) {
-		spotLight.color.setHex( val );
-		render();
-	} );
-	gui.add( params, 'intensity', 0, 2 ).onChange( function ( val ) {
-		spotLight.intensity = val;
-		render();
-	} );
-	gui.add( params, 'distance', 50, 200 ).onChange( function ( val ) {
-		spotLight.distance = val;
-		render();
-	} );
-	gui.add( params, 'angle', 0, Math.PI / 3 ).onChange( function ( val ) {
-		spotLight.angle = val;
-		render();
-	} );
-	gui.add( params, 'penumbra', 0, 1 ).onChange( function ( val ) {
-		spotLight.penumbra = val;
-		render();
-	} );
-	gui.add( params, 'decay', 1, 2 ).onChange( function ( val ) {
-		spotLight.decay = val;
-		render();
-	} );
+		color: "#72645B",
+	};
+	gui = new dat.GUI();
+	var folder1 = gui.addFolder('Scene Color');
+	folder1.addColor(params, 'color').onChange(function(){
+		scene.background = new THREE.Color( params.color);
+	});
+	//var folder2 = gui.addFolder('Material Color');
+	//folder2.addColor(params, 'color').onChange(function(){
+		//obj.material.color.setHex(params.color);
+	//});
 	gui.open();
 }
 
