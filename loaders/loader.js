@@ -63,7 +63,7 @@ window.addEventListener("load", function () {
         renderer.render(scene, camera);
     };
     loop();
-    
+    buildGui();
     // file load
     var openFile = function (file) {
         var reader = new FileReader();
@@ -93,7 +93,7 @@ window.addEventListener("load", function () {
 			scene.add(obj);
 			control.attach( obj );
 			scene.add( control );
-			buildGui();
+			
         }, false);
         reader.readAsArrayBuffer(file);
     };
