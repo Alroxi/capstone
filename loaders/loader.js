@@ -1,111 +1,65 @@
-var camera, cameraTarget, scene, renderer, controls, orbit, control, obj, geom, mat;
+var camera, cameraTarget, scene, renderer, controls, orbit, control, mesh, geometry, material, plane, gridHelper, view;
 var w = window.innerWidth, h = window.innerHeight;
 
 window.addEventListener("load", function () {
     "use strict";
-    
-    var view = document.getElementById("view");
-    
-	
-	
-	renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize( w, h );
-	renderer.gammaInput = true;
-	renderer.gammaOutput = true;
-	renderer.shadowMap.enabled = true;
-	view.appendChild(renderer.domElement);
     window.addEventListener( 'resize', onWindowResize, false );
-    setupCamera();
 	
-    scene = new THREE.Scene();
-    scene.add(new THREE.AmbientLight(0x666666));
-	scene.background = new THREE.Color( 0x999999 );
-	scene.fog = new THREE.Fog( 0x72645b, 2, 15 );
-    
-	var plane = new THREE.Mesh(
-		//new THREE.PlaneBufferGeometry( 40, 40 ),
-		//new THREE.MeshPhongMaterial( { color: 0x999999, specular: 0x101010 } )
-	);
-	plane.rotation.x = -Math.PI/2;
-	//plane.position.y = -0.5;
-	scene.add( plane );
-	plane.receiveShadow = true;
-				
-	var size = 10;
-	var divisions = 10;
-
-	var gridHelper = new THREE.GridHelper( size, divisions );
-	scene.add( gridHelper );
-	scene.add( new THREE.HemisphereLight( 0x443333, 0x111122 ) );
+	setupRenderer();
+	setupCamera();
+	setupScene();
+	setupPlane();
+	setupLight();
 	
-		addShadowedLight( 1, 1, 1, 0xffffff, 1.35 );
-		addShadowedLight( 0.5, 1, -1, 0xffaa00, 1 );
-	
-    var light1 = new THREE.DirectionalLight(0xffffff);
-    light1.position.set(0, 100, 100);
-    scene.add(light1);
-    
-    var light2 = new THREE.DirectionalLight(0xffffff);
-    light2.position.set(0, -100, -100);
-    scene.add(light2);
-    
-    mat = new THREE.MeshPhongMaterial({
+    material = new THREE.MeshPhongMaterial({
         color: 0x339900, ambient: 0x339900, specular: 0x030303,
     });
-    obj = new THREE.Mesh(new THREE.Geometry(), mat);
-    scene.add(obj);
+    mesh = new THREE.Mesh(new THREE.Geometry(), material);
+    scene.add(mesh);
     
     var loop = function loop() {
         requestAnimationFrame(loop);
-        //obj.rotation.z += 0.05;
+        //mesh.rotation.z += 0.05;
         //controls.update();
         renderer.clear();
         renderer.render(scene, camera);
     };
     loop();
     buildGui();
+	
     // file load
     var openFile = function (file) {
         var reader = new FileReader();
         reader.addEventListener("load", function (ev) {
             var buffer = ev.target.result;
-            geom = loadStl(buffer);
-            scene.remove(obj);
-            obj = new THREE.Mesh(geom, mat);
-			obj.position.set( 0, 0.5, 0 );
-			obj.rotation.set( -Math.PI / 2, 0, 0 );
-			obj.scale.set( 2, 2, 2 );
-			obj.castShadow = true;
-			obj.receiveShadow = true;
-			obj.dynamic = true;
-            
-			orbit = new THREE.OrbitControls(camera, renderer.domElement);
-			orbit.update();
-			orbit.addEventListener( 'change', render );
-
-			control = new THREE.TransformControls( camera, renderer.domElement );
-			control.addEventListener( 'change', render );
-
-			control.addEventListener( 'dragging-changed', function ( event ) {
-				orbit.enabled = !event.value;
-			} );
-
-			scene.add(obj);
-			control.attach( obj );
-			scene.add( control );
-			
+            geometry = loadStl(buffer);
+			resetScene();
+			setupCamera();
+            mesh = new THREE.Mesh(geometry, material);
+			setupMesh(mesh);
         }, false);
         reader.readAsArrayBuffer(file);
     };
 	
-	
-
     // file input button
     var input = document.getElementById("file");
     input.addEventListener("change", function (ev) {
         var file = ev.target.files[0];
         openFile(file);
     }, false);
+	
+	// URL file input field
+	var input2 = document.getElementById("fileURL");
+	input2.addEventListener("change", function () {
+		var buffer = input2.value;
+		var loader = new THREE.STLLoader();
+		loader.load(buffer, function (geometry){
+			resetScene();
+			setupCamera();
+			mesh = new THREE.Mesh(geometry, material);
+            setupMesh(mesh);
+		});
+	});
     
     // dnd
     view.addEventListener("dragover", function (ev) {
@@ -190,12 +144,12 @@ window.addEventListener("load", function () {
 }, false);
 
 function render() {
-
+	
 	renderer.render( scene, camera );
-
 }
 
 function setupCamera() {
+	
 	camera = new THREE.PerspectiveCamera(70, w / h, 0.1, 1000);
     camera.position.set( 3, 3, 3 );
 	cameraTarget = new THREE.Vector3( 0, -0.25, 0 );
@@ -203,10 +157,92 @@ function setupCamera() {
 	//controls.enableDamping = true
 	//controls.dampingFactor = 0.2
 	//controls.rotateSpeed = 0.5
+}
+
+function setupScene() {
 	
+	scene = new THREE.Scene();
+    scene.add(new THREE.AmbientLight(0x666666));
+	scene.background = new THREE.Color( 0x999999 );
+	scene.fog = new THREE.Fog( 0x72645b, 2, 15 );
+}
+
+function setupLight() {
+	
+	scene.add( new THREE.HemisphereLight( 0x443333, 0x111122 ) );
+	
+		addShadowedLight( 1, 1, 1, 0xffffff, 1.35 );
+		addShadowedLight( 0.5, 1, -1, 0xffaa00, 1 );
+	
+    var light1 = new THREE.DirectionalLight(0xffffff);
+    light1.position.set(0, 100, 100);
+    scene.add(light1);
+    
+    var light2 = new THREE.DirectionalLight(0xffffff);
+    light2.position.set(0, -100, -100);
+    scene.add(light2);
+}
+
+function setupMesh(mesh) {
+	mesh.position.set( 0, 0.5, 0 );
+	mesh.rotation.set( -Math.PI / 2, 0, 0 );
+	mesh.scale.set( 2, 2, 2 );
+	mesh.castShadow = true;
+	mesh.receiveShadow = true;
+	mesh.dynamic = true;
+
+	orbit = new THREE.OrbitControls(camera, renderer.domElement);
+	orbit.update();
+	orbit.addEventListener( 'change', render );
+
+	control = new THREE.TransformControls( camera, renderer.domElement );
+	control.addEventListener( 'change', render );
+
+	control.addEventListener( 'dragging-changed', function ( event ) {
+		orbit.enabled = !event.value;
+	} );
+	control.attach( mesh );
+	scene.add(control);
+	scene.add(mesh);
+}
+
+function resetScene(){
+	scene.remove(mesh);
+	scene.remove(control);
+	scene.remove(orbit);
+	scene.remove(camera);
+}
+
+function setupPlane() {
+	
+	plane = new THREE.Mesh(
+		//new THREE.PlaneBufferGeometry( 40, 40 ),
+		//new THREE.MeshPhongMaterial( { color: 0x999999, specular: 0x101010 } )
+	);
+	plane.rotation.x = -Math.PI/2;
+	plane.position.y = -0.5;
+	scene.add( plane );
+	plane.receiveShadow = true;
+				
+	var size = 10;
+	var divisions = 10;
+
+	gridHelper = new THREE.GridHelper( size, divisions );
+	scene.add( gridHelper );
+}
+
+function setupRenderer() {
+	view = document.getElementById("view");
+	renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize( w, h );
+	renderer.gammaInput = true;
+	renderer.gammaOutput = true;
+	renderer.shadowMap.enabled = true;
+	view.appendChild(renderer.domElement);
 }
 
 function addShadowedLight( x, y, z, color, intensity ) {
+	
 	var directionalLight = new THREE.DirectionalLight( color, intensity );
 	directionalLight.position.set( x, y, z );
 	scene.add( directionalLight );
@@ -224,8 +260,9 @@ function addShadowedLight( x, y, z, color, intensity ) {
 }
 
 function buildGui() {
+	
 	var params = {
-		color: "#72645B",
+		color: "#999999",
 	};
 	gui = new dat.GUI();
 	var folder1 = gui.addFolder('Scene Color');
@@ -234,7 +271,7 @@ function buildGui() {
 	});
 	//var folder2 = gui.addFolder('Material Color');
 	//folder2.addColor(params, 'color').onChange(function(){
-		//obj.material.color.setHex(params.color);
+		//mesh.material.color.setHex(params.color);
 	//});
 	gui.open();
 }
@@ -247,5 +284,4 @@ function onWindowResize() {
 	renderer.setSize( window.innerWidth, window.innerHeight );
 
 	render();
-
 }
