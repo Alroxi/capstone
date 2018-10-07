@@ -1,0 +1,74 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <script src="three.js"></script>
+    <script src="OBJLoader.js"></script>
+    <script src="OrbitControls.js"></script>
+    <script src="TrackballControls.js"></script>
+    <script src="dat.gui.min.js"></script>
+	<script src="TransformControls.js"></script>
+    <script src="OBJHandler.js"></script>
+	
+    
+    <link rel="stylesheet" href="../bootstrap.css">
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+</head>
+<style>
+body{
+    overflow: hidden;
+}
+canvas{
+    width:  100% !important;
+    height: 100% !important;
+}
+.dropdown-toggle{
+    position: absolute;
+}
+.dropdown-menu{
+    margin-left: -5px;
+}
+#info {
+    position: absolute;
+	background: white;
+    top: 0px; 
+	width: 40%;
+	max-width: 600px;
+    right:0;
+	left: 0;
+	margin: 0 auto;
+    padding: 15px;
+    z-index:100;
+}
+</style>
+<body>
+    <div id="info" class="text-center">
+        <a class="text-dark" href="javascript:control.setMode( 'translate' );">"W" translate</a> |
+        <a class="text-dark" href="javascript:control.setMode( 'rotate' );">"E" rotate</a> |
+        <a class="text-dark" href="javascript:control.setMode( 'scale' );">"R" scale</a> |
+        <a class="text-dark" href="javascript:control.setSize( control.size + 0.1 );">"+" increase size</a> |
+        <a class="text-dark" href="javascript:control.setSize( Math.max( control.size - 0.1, 0.1 ) );">"-" decrease size</a><br />
+        <a class="text-dark" href="javascript:control.setSpace( control.space === 'local' ? 'world' : 'local' );">"Q" toggle world/local space</a> | Hold "Ctrl" down to snap to grid<br />
+        <a class="text-dark" href="javascript:control.showX = !control.showX">"X" toggle X</a> |
+        <a class="text-dark" href="javascript:control.showY = !control.showY">"Y" toggle Y</a> |
+        <a class="text-dark" href="javascript:control.showZ = !control.showZ">"Z" toggle Z</a> |
+        <a class="text-dark" href="javascript:control.enabled = !control.enabled">"Spacebar" toggle enabled</a><br />
+    </div>
+    <div class="dropdown">
+        <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            Select Source
+        </button>
+        <div class="dropdown-menu p-3" aria-labelledby="dropdownMenuButton">
+            <span>Select any OBJ file from computer: </span>
+            <input type="file" id="file" />
+            <span>Or select any OBJ file online</span>
+            <input type="text" id="fileURL" placeholder="Insert OBJ file URL here">
+        </div>
+        
+    </div>
+    
+    <div id="view"></div>
+</body>

@@ -32,13 +32,19 @@ window.addEventListener("load", function () {
         var reader = new FileReader();
         reader.addEventListener("load", function (event) {
             var buffer = event.target.result;
-            geometry = loadStl(buffer);
+			var object = new THREE.OBJLoader().parse( buffer );
 			resetScene();
 			setupCamera();
-            mesh = new THREE.Mesh(geometry, material);
-			setupMesh(mesh);
+			object.traverse( function ( child ) {
+				if ( child.isMesh ) {
+
+					child.material = material;
+
+				}
+			});
+			setupMesh(object);
         }, false);
-        reader.readAsArrayBuffer(file);
+        reader.readAsText(file);
     };
 	
     // file input button
@@ -52,12 +58,18 @@ window.addEventListener("load", function () {
 	var input2 = document.getElementById("fileURL");
 	input2.addEventListener("change", function () {
 		var buffer = input2.value;
-		var loader = new THREE.STLLoader();
-		loader.load(buffer, function (geometry){
-			resetScene();
-			setupCamera();
-			mesh = new THREE.Mesh(geometry, material);
-            setupMesh(mesh);
+		var loader2 = new THREE.OBJLoader();
+		loader2.load(buffer, function (object){
+				resetScene();
+				setupCamera();
+				object.traverse( function ( child ) {
+					if ( child.isMesh ) {
+
+						child.material = material;
+
+					}
+				});
+				setupMesh(object);
 		});
 	});
     
