@@ -35,6 +35,13 @@ window.addEventListener("load", function () {
 			var object = new THREE.VRMLLoader().parse(buffer);
 			resetScene();
 			setupCamera();
+			object.traverse( function ( child ) {
+				if ( child.isMesh ) {
+
+					child.material = material;
+
+				}
+			});
 			setupMesh(object);
         }, false);
         reader.readAsText(file);
@@ -55,6 +62,13 @@ window.addEventListener("load", function () {
 		loader2.load('https://dl.dropbox.com/s/xjqs6xhc8woxjzi/CarmenPaz.wrl', function (object){
 			resetScene();
 			setupCamera();
+			object.traverse( function ( child ) {
+				if ( child.isMesh ) {
+
+					child.material = material;
+
+				}
+			});
 			setupMesh(object);
 		});
 	});
