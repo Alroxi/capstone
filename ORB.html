@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Hello OpenCV.js</title>
+
+  <style>
+    body {
+      font-family: Monospace;
+      background-color: #336677;
+      margin: 0px;
+    }
+
+    #showcase {
+      align-items: center;
+      height: 80%;
+      width: 80%;
+    }
+
+    #imageSrc {
+      max-width : 650px;
+	  max-height : 650px;
+    }
+
+    canvas {
+      background-color: black;
+    }
+
+    a {
+      color: #0040ff;
+    }
+
+  </style>
+</head>
+<body>
+<p id="openCVStatus">OpenCV.js is loading...</p>
+<p id="jsTrackerStatus">tracker.js is loading...</p>
+<div>
+  <div id="showcase" class="inputoutput">
+    <img id="imageSrc" alt="No Image" />
+    <canvas id="canvasOutput" ></canvas>
+    <div><input type="file" id="fileInput" name="file" /></div>
+  </div>
+</div>
+
+<div>
+<!--  <img id="image1" src="assets/brief1.png" />
+  <img id="image2" src="assets/brief2.png" />-->
+  <canvas id="canvas" width="1300" height="650"></canvas>
+</div>
+
+<script src='js/dat.gui.js'></script>
+<script async src='js/tracking.js' onload="onJSTrackerReady();" type="text/javascript"></script>
+<script async src="js/opencv.js" onload="onOpenCvReady();" type="text/javascript"></script>
+
+<script type="text/javascript">
+  let imgElement = document.getElementById('imageSrc');
+  let inputElement = document.getElementById('fileInput');
+  inputElement.addEventListener('change', (e) => {
+    imgElement.src = URL.createObjectURL(e.target.files[0]);
+  }, false);
+
+  imgElement.onload = function() {
+
+  };
+
+  function orb() {
+    // Grab source image and create destination
+    let src = cv.imread(imgElement);
+    let dst = cv.Mat.zeros(src.rows, src.cols, cv.CV_8U);
+
+    let colourConversion = parseInt(Control.colourConversion);
+    // Remove alpha channel
+    cv.cvtColor(src, src, colourConversion, 0);
+
+    // Get number of features
+    let nfeatures = Control.nfeatures;
+
+    let edgeThreshold = Control.edgeThreshold;
+
+    // Create ORB
+    let orb = new cv.ORB(nfeatures, 1.2, 8, edgeThreshold, 0, 2, 0, edgeThreshold, 20);
+
+    // Find keypoints using orb
+    let kp = new cv.KeyPointVector();
+    let noArray = new cv.Mat();
+    orb.detect(src, kp, noArray);
+
+    // Compute the descriptors using orb
+    orb.compute(src, kp, dst);
+
+    // Draw keypoints
+    let drawMatchesFlags = parseInt(Control.drawMatchesFlags);
+    let colourArray = Control.orbColour.toString().split(',');
+    let colour = new cv.Scalar(parseFloat(colourArray[0]), parseFloat(colourArray[1]), parseFloat(colourArray[2]));
+    cv.drawKeypoints(src, kp, dst, colour, drawMatchesFlags);
+    console.log(kp.size());
+    for (var i = 0; i < kp.size(); i++) {
+      console.log(kp.get(i));
+    }
+
+    // Display
+    cv.imshow('canvasOutput', dst);
+
+    // Cleanup
+    src.delete(); dst.delete(); orb.delete(); noArray.delete(); kp.delete();
+  }
+
+  function match() {
+    var width = 650;
+    var height = 650;
+
+    var canvas = document.getElementById('canvas');
+    var context = canvas.getContext('2d');
+
+    var image1 = document.getElementById('imageSrc');
+    var image2 = document.getElementById('canvasOutput');
+
+    tracking.Brief.N = parseInt(Control.briefN);
+    window.matchesShown = parseInt(Control.matchesShown);
+    window.blurRadius = parseInt(Control.blurRadius);
+
+    context.drawImage(image1, 0, 0, width, height);
+    context.drawImage(image2, width, 0, width, height);
+
+    var imageData1 = context.getImageData(0, 0, width, height);
+    var imageData2 = context.getImageData(width, 0, width, height);
+
+
+    var gray1 = tracking.Image.grayscale(tracking.Image.blur(imageData1.data, width, height, blurRadius), width, height);
+    var gray2 = tracking.Image.grayscale(tracking.Image.blur(imageData2.data, width, height, blurRadius), width, height);
+
+    // Obtain keypoints (corners) using FAST
+    var corners1 = tracking.Fast.findCorners(gray1, width, height);
+    var corners2 = tracking.Fast.findCorners(gray2, width, height);
+
+    // Obtain descriptors of the keypoints using BRIEF
+    var descriptors1 = tracking.Brief.getDescriptors(gray1, width, corners1);
+    var descriptors2 = tracking.Brief.getDescriptors(gray2, width, corners2);
+
+    var matches = tracking.Brief.reciprocalMatch(corners1, descriptors1, corners2, descriptors2);
+
+	matches.sort(function(a, b) {
+		return b.confidence - a.confidence;
+	});
+
+    for (var i = 0; i < Math.min(window.matchesShown, matches.length); i++) {
+	
+		if (Control.singleColour) {
+			var color = '#00FF00';
+		}
+		else {
+			var color = '#' + Math.floor(Math.random()*16777215).toString(16);
+		}
+		context.fillStyle = color;
+		context.strokeStyle = color;
+	  
+		if (Control.showCorners) {
+		  context.fillRect(matches[i].keypoint1[0], matches[i].keypoint1[1], 4, 4);
+		  context.fillRect(matches[i].keypoint2[0] + width, matches[i].keypoint2[1], 4, 4);
+		}
+
+		if (Control.showMatches) {
+			context.beginPath();
+			context.moveTo(matches[i].keypoint1[0], matches[i].keypoint1[1]);
+			context.lineTo(matches[i].keypoint2[0] + width, matches[i].keypoint2[1]);
+			context.stroke();
+		}
+    }
+
+
+    /*let img1 = cv.imread(document.getElementById('image1'));
+    let img2 = cv.imread(document.getElementById('image2'));
+    let des1 = cv.Mat.zeros(img1.rows, img1.cols, cv.CV_8U);
+    let des2 = cv.Mat.zeros(img2.rows, img2.cols, cv.CV_8U);
+
+
+    cv.cvtColor(img1, img1, cv.COLOR_RGBA2GRAY, 0);
+    cv.cvtColor(img2, img2, cv.COLOR_RGBA2GRAY, 0);
+
+    // Get number of features
+    var nfeatures = Control.nfeatures;
+
+    // Initiate ORB detector
+    orb = new cv.ORB(nfeatures, 1.2, 8, 31, 0, 2, 0, 31, 20);
+
+    let noArray = new cv.Mat();
+    let kp1 = new cv.KeyPointVector();
+    let kp2 = new cv.KeyPointVector();
+
+    orb.detect(img1, kp1, noArray);
+    orb.detect(img2, kp1, noArray);
+
+    orb.compute(img1, kp1, des1);
+    orb.compute(img1, kp1, des2);
+
+    // create BFMatcher object
+    let bf = new cv.DescriptorMatcher('BruteForce');
+
+
+    //let noVector = new cv.DMatchVector();
+
+    // Match descriptors.
+    let matches = new cv.DMatchVector();
+    bf.match(des1, des2, matches, noArray);
+
+
+
+    console.log(matches);
+
+    var canvas = document.getElementById('canvas');
+    var context = canvas.getContext('2d');
+
+
+    let green = new cv.Scalar(0, 255, 0,0);
+    //let red = new cv.Scalar(255, 0, 0,0);
+    let dst = new cv.Mat();
+    //let drawnMatches = new cv.MatOfByte(dst);
+    //cv.drawKeypoints(img1, kp1, dst, green, 0);
+    cv.drawMatches(img1, kp1, img2, kp2, matches, dst, green, green, '', 1);
+    cv.imshow('canvas', dst);
+
+    /*void drawMatches( InputArray img1, const std::vector<KeyPoint>& keypoints1,
+                      InputArray img2, const std::vector<KeyPoint>& keypoints2,
+                      const std::vector<DMatch>& matches1to2, InputOutputArray outImg,
+                      const Scalar& matchColor, const Scalar& singlePointColor,
+                      const std::vector<char>& matchesMask, int flags )*/
+  }
+
+
+  function drawEdges() {
+    let src = cv.imread(imgElement);
+    let dst = new cv.Mat();
+    cv.cvtColor(src, src, cv.COLOR_RGB2GRAY, 0);
+    cv.Canny(src, dst, 50, 100, 3, false);
+    cv.imshow('canvasOutput', dst);
+    src.delete(); dst.delete();
+  }
+
+  function houghlinesp() {
+    let src = cv.imread(imgElement);
+    let dst = cv.Mat.zeros(src.rows, src.cols, cv.CV_8UC3);
+    let lines = new cv.Mat();
+    let color = new cv.Scalar(255, 0, 0);
+    cv.cvtColor(src, src, cv.COLOR_RGBA2GRAY, 0);
+    cv.Canny(src, src, 50, 200, 3);
+    // You can try more different parameters
+    cv.HoughLinesP(src, lines, 1, Math.PI / 180, 2, 0, 0);
+    // draw lines
+    for (let i = 0; i < lines.rows; ++i) {
+        let startPoint = new cv.Point(lines.data32S[i * 4], lines.data32S[i * 4 + 1]);
+        let endPoint = new cv.Point(lines.data32S[i * 4 + 2], lines.data32S[i * 4 + 3]);
+        cv.line(dst, startPoint, endPoint, color);
+    }
+    cv.imshow('canvasOutput', dst);
+    src.delete(); dst.delete(); lines.delete();
+  }
+  
+  function histogram() {
+	let src = cv.imread(imgElement);
+	cv.cvtColor(src, src, cv.COLOR_RGBA2GRAY, 0);
+	let srcVec = new cv.MatVector();
+	srcVec.push_back(src);
+	let accumulate = false;
+	let channels = [0];
+	let histSize = [256];
+	let ranges = [0, 255];
+	let hist = new cv.Mat();
+	let mask = new cv.Mat();
+	let color = new cv.Scalar(255, 255, 255);
+	let scale = 2;
+	// You can try more different parameters
+	cv.calcHist(srcVec, channels, mask, hist, histSize, ranges, accumulate);
+	let result = cv.minMaxLoc(hist, mask);
+	let max = result.maxVal;
+	let dst = new cv.Mat.zeros(src.rows, histSize[0] * scale,
+							   cv.CV_8UC3);
+	// draw histogram
+	for (let i = 0; i < histSize[0]; i++) {
+		let binVal = hist.data32F[i] * src.rows / max;
+		let point1 = new cv.Point(i * scale, src.rows - 1);
+		let point2 = new cv.Point((i + 1) * scale - 1, src.rows - binVal);
+		cv.rectangle(dst, point1, point2, color, cv.FILLED);
+	}
+	cv.imshow('canvasOutput', dst);
+	src.delete(); dst.delete(); srcVec.delete(); mask.delete(); hist.delete();
+  }
+  
+  function equalizeHistogram() {
+	let src = cv.imread(imgElement);
+	let dst = new cv.Mat();
+	cv.cvtColor(src, src, cv.COLOR_RGBA2GRAY, 0);
+	cv.equalizeHist(src, dst);
+	cv.imshow('canvasOutput', dst);
+	
+	src.delete(); dst.delete();
+  }
+  
+  function clahe() {
+	let src = cv.imread(imgElement);
+	let equalDst = new cv.Mat();
+	let claheDst = new cv.Mat();
+	cv.cvtColor(src, src, cv.COLOR_RGBA2GRAY, 0);
+	cv.equalizeHist(src, equalDst);
+	let tileGridSize = new cv.Size(8, 8);
+	let clahe = new cv.CLAHE(40, tileGridSize);
+	clahe.apply(src, claheDst);
+	cv.imshow('canvasOutput', equalDst);
+	cv.imshow('canvasOutput', claheDst);
+	
+	src.delete(); equalDst.delete(); claheDst.delete(); clahe.delete();
+  }
+  
+  
+  function grabcut() {
+    let src = cv.imread(imgElement);
+    cv.cvtColor(src, src, cv.COLOR_RGBA2RGB, 0);
+    let mask = new cv.Mat();
+    let bgdModel = new cv.Mat();
+    let fgdModel = new cv.Mat();
+	
+	let horizontal = parseInt(Control.grabHorizontal);
+	let vertical = parseInt(Control.grabVertical);
+	let width = parseInt(Control.grabWidth);
+	let height = parseInt(Control.grabHeight);
+	
+	
+	// left, top, width, height
+    let rect = new cv.Rect(horizontal, vertical, width, height);
+    cv.grabCut(src, mask, rect, bgdModel, fgdModel, 1, cv.GC_INIT_WITH_RECT);
+    // draw foreground
+    for (let i = 0; i < src.rows; i++) {
+        for (let j = 0; j < src.cols; j++) {
+            if (mask.ucharPtr(i, j)[0] == 0 || mask.ucharPtr(i, j)[0] == 2) {
+                src.ucharPtr(i, j)[0] = 0;
+                src.ucharPtr(i, j)[1] = 0;
+                src.ucharPtr(i, j)[2] = 0;
+            }
+        }
+    }
+    // draw grab rect
+    let color = new cv.Scalar(0, 0, 255);
+    let point1 = new cv.Point(rect.x, rect.y);
+    let point2 = new cv.Point(rect.x + rect.width, rect.y + rect.height);
+    cv.rectangle(src, point1, point2, color);
+    cv.imshow('canvasOutput', src);
+    src.delete(); mask.delete(); bgdModel.delete(); fgdModel.delete();
+  }
+  
+  function moveRectangle() {
+	let src = cv.imread(imgElement);
+	let horizontal = parseInt(Control.grabHorizontal);
+	let vertical = parseInt(Control.grabVertical);
+	let width = parseInt(Control.grabWidth);
+	let height = parseInt(Control.grabHeight);
+	
+	rect = new cv.Rect(horizontal, vertical, width, height);
+	
+	// draw rectangle
+	let color = new cv.Scalar(0, 0, 255);
+    let point1 = new cv.Point(rect.x, rect.y);
+    let point2 = new cv.Point(rect.x + rect.width, rect.y + rect.height);
+    cv.rectangle(src, point1, point2, color);
+    cv.imshow('canvasOutput', src);
+	src.delete();
+  }
+
+  function onOpenCvReady() {
+    document.getElementById('openCVStatus').innerHTML = 'OpenCV.js is ready.';
+  }
+  
+  function onJSTrackerReady() {
+	document.getElementById('jsTrackerStatus').innerHTML = 'tracker.js is ready.';
+  }
+
+
+
+
+  // dat.gui control box
+  var Control =  {
+    orb : orb,
+    colourConversion : 1,
+    nfeatures : 500,
+    edgeThreshold : 31,
+    drawMatchesFlags : 0,
+    orbColour : [0, 255, 0],
+    drawEdges: drawEdges,
+    houghlinesp : houghlinesp,
+	histogram : histogram,
+	equalizeHistogram : equalizeHistogram,
+	clahe : clahe,
+    grabcut : grabcut,
+	grabHorizontal : 50,
+	grabVertical : 50,
+	grabWidth : 260,
+	grabHeight : 280,
+	match : match,
+	briefN : 256,
+	matchesShown : 30,
+	blurRadius : 3,
+	showCorners : true,
+	showMatches : true,
+	singleColour : false
+  };
+
+  
+  function init() {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+
+    var gui = new dat.GUI({autoPlace: false});
+	
+	gui.remember(Control);
+	
+    document.body.appendChild(gui.domElement);
+    gui.domElement.style.position = "absolute";
+    gui.domElement.style.top = "0px";
+    gui.domElement.style.right = "5px";
+
+    var orbFolder = gui.addFolder('ORB');
+      orbFolder.add(Control,'orb');
+      orbFolder.add(Control,'colourConversion', {
+          RGBA2RGB : 1,
+          RGBA2GRAY : 11,
+          RGB2HLS : 53,
+        } ).onChange(orb);
+      orbFolder.add(Control,'nfeatures', 1, 5000).onChange(orb);
+      orbFolder.add(Control, 'edgeThreshold', 2, 50).onChange(orb);
+      orbFolder.add(Control, 'drawMatchesFlags', {
+          DEFAULT : 0,
+          NOT_DRAW_SINGLE_POINTS : 2,
+          DRAW_RICH_KEYPOINTS : 4
+        } ).onChange(orb);
+      orbFolder.addColor(Control,'orbColour').onChange(orb);
+
+    var edgeFolder = gui.addFolder('Edge Detection');
+      edgeFolder.add(Control,'drawEdges');
+      edgeFolder.add(Control,'houghlinesp');
+	  
+	var histogramFolder = gui.addFolder('Histogram');
+		histogramFolder.add(Control,'histogram');
+		histogramFolder.add(Control,'equalizeHistogram');
+		histogramFolder.add(Control,'clahe');
+
+    var extractFolder = gui.addFolder('Extraction');
+      extractFolder.add(Control,'grabcut');
+	  extractFolder.add(Control,'grabHorizontal', 0, 650).onChange(moveRectangle);
+	  extractFolder.add(Control,'grabVertical', 0, 650).onChange(moveRectangle);
+	  extractFolder.add(Control,'grabWidth', 1, 650).onChange(moveRectangle);
+	  extractFolder.add(Control,'grabHeight', 1, 650).onChange(moveRectangle);
+	  
+	var matchFolder = gui.addFolder('Matching');
+		matchFolder.add(Control,'match');
+		matchFolder.add(Control,'briefN', 1, 512).onChange(match);
+		matchFolder.add(Control,'matchesShown', 1, 300).onChange(match);
+		matchFolder.add(Control,'blurRadius', 1, 6).onChange(match);
+		matchFolder.add(Control,'showCorners').onChange(match);
+		matchFolder.add(Control,'showMatches').onChange(match);
+		matchFolder.add(Control, 'singleColour').onChange(match);
+  }
+  init();
+
+</script>
+
+
+</body>
+</html>

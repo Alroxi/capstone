@@ -1,4 +1,4 @@
-var camera, cameraTarget, scene, renderer, controls, orbit, control, mesh, geometry, material, plane, gridHelper, view;
+var camera, cameraTarget, scene, renderer, controls, orbit, control, mesh, geometry, material, plane, gridHelper, view, exporter;
 var w = window.innerWidth, h = window.innerHeight;
 
 window.addEventListener("load", function () {
@@ -10,6 +10,8 @@ window.addEventListener("load", function () {
 	setupScene();
 	setupPlane();
 	setupLight();
+	
+	exporter = new THREE.STLExporter();
 	
     material = new THREE.MeshPhongMaterial({
         color: 0x339900, ambient: 0x339900, specular: 0x030303,
@@ -275,16 +277,22 @@ function buildGui() {
 	
 	var params = {
 		color: "#999999",
+		ASCII: function() {
+						exportASCII();
+					},
+		Binary: function() {
+			exportBinary();
+		}
 	};
 	gui = new dat.GUI();
 	var folder1 = gui.addFolder('Scene Color');
 	folder1.addColor(params, 'color').onChange(function(){
 		scene.background = new THREE.Color( params.color);
 	});
-	//var folder2 = gui.addFolder('Material Color');
-	//folder2.addColor(params, 'color').onChange(function(){
-		//mesh.material.color.setHex(params.color);
-	//});
+	var folder2 = gui.addFolder('Export as STL');
+	folder2.add(params, 'ASCII');
+	folder2.add(params, 'Binary');
+	
 	gui.open();
 }
 
@@ -296,4 +304,32 @@ function onWindowResize() {
 	renderer.setSize( window.innerWidth, window.innerHeight );
 
 	render();
+}
+
+function exportASCII() {
+	var result = exporter.parse( mesh );
+	saveString( result, 'ASCII.stl' );
+}
+
+function exportBinary() {
+	var result = exporter.parse( mesh, { binary: true } );
+	saveArrayBuffer( result, 'binary.stl' );
+}
+
+var link = document.createElement( 'a' );
+link.style.display = 'none';
+document.body.appendChild( link );
+
+function save( blob, filename ) {
+	link.href = URL.createObjectURL( blob );
+	link.download = filename;
+	link.click();
+}
+
+function saveString( text, filename ) {
+	save( new Blob( [ text ], { type: 'text/plain' } ), filename );
+}
+
+function saveArrayBuffer( buffer, filename ) {
+	save( new Blob( [ buffer ], { type: 'application/octet-stream' } ), filename );
 }
